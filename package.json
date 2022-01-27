@@ -1,0 +1,20 @@
+{
+  "type": "module",
+  "browserslist": "> 0.5%, last 2 versions, not dead",
+  "source": "index.html",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build"
+  },
+  "devDependencies": {
+    "parcel": "^2.2.1"
+  },
+  "dependencies": {
+    "@hyperswarm/dht": "github:hyperswarm/dht",
+    "@hyperswarm/dht-relay": "^0.0.0",
+    "b4a": "^1.3.1",
+    "hypercore": "^10.0.0-alpha.24",
+    "isomorphic-ws": "^4.0.1",
+    "random-access-memory": "^4.0.0"
+  }
+}
