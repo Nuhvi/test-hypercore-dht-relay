@@ -1,13 +1,12 @@
-import { Node } from '@hyperswarm/dht-relay';
-import ws from '@hyperswarm/dht-relay/ws';
-import Hypercore from 'hypercore';
-import ram from 'random-access-memory';
-import b4a from 'b4a';
-import WebSocket from 'isomorphic-ws';
-
-export class DHT extends Node {
+const { Node } = require('@hyperswarm/dht-relay');
+const ws = require('@hyperswarm/dht-relay/ws');
+const Hypercore = require('hypercore');
+const ram = require('random-access-memory');
+const b4a = require('b4a');
+const WebSocket = require('isomorphic-ws');
+class DHT extends Node {
   constructor(opts) {
-    const websocket = new WebSocket('wss://dht-relay.synonym.to');
+    const websocket = new WebSocket('ws://127.0.0.1:8080');
 
     super(new ws.Socket(websocket), null);
   }
@@ -20,7 +19,7 @@ const main = async () => {
   const core = new Hypercore(
     ram,
     b4a.from(
-      '34d26579dbb456693e540672cf922f52dde0d6532e35bf06be013a7c532f20e0',
+      '2e066532cc4f0f0ebaa8b09f19646ee0854aab3c80aa50356974996dac7999a1',
       'hex',
     ),
     { valueEncoding: 'json' },
@@ -35,6 +34,7 @@ const main = async () => {
     peers.forEach((peer) => {
       const pubKeyString = b4a.toString(peer.publicKey, 'hex');
       if (!connections.has(pubKeyString)) {
+        console.log('Connecting to peer:', pubKeyString);
         const connection = node.connect(peer.publicKey);
         connections.set(pubKeyString, connection);
       }
@@ -42,6 +42,11 @@ const main = async () => {
   }
 
   for (const connection of connections.values()) {
+    console.log(
+      'Replicating core from peer:',
+      b4a.toString(connection.remotePublicKey, 'hex'),
+    );
+
     connection.on('error', (error) => {
       console.log(error);
     });
@@ -49,7 +54,7 @@ const main = async () => {
   }
 
   const data = await core.get(0, { timeout: 1000 });
-  console.log('got data: ', data);
+  console.log('Got data: ', data);
 
   for (const connection of connections.values()) {
     connection.destroy();

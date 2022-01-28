@@ -1,13 +1,13 @@
-import DHT from '@hyperswarm/dht';
-import Hypercore from 'hypercore';
-import ram from 'random-access-memory';
-import { createHash } from 'crypto';
+const DHT = require('@hyperswarm/dht');
+const Hypercore = require('hypercore');
+const ram = require('random-access-memory');
+const { createHash } = require('crypto');
 
 const main = async () => {
   const node = new DHT({ ephemeral: true });
   await node.ready();
 
-  const keyPair = DHT.keyPair(createHash('sha256').update('foo').digest());
+  const keyPair = DHT.keyPair(createHash('sha256').update('foobar').digest());
 
   const core = new Hypercore(ram, {
     valueEncoding: 'json',
@@ -29,4 +29,4 @@ const main = async () => {
   console.log('seeding core: ', core.key.toString('hex'));
 };
 
-main();
+module.exports = main;

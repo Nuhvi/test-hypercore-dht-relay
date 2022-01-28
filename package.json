@@ -1,12 +1,16 @@
 {
-  "type": "module",
   "browserslist": "> 0.5%, last 2 versions, not dead",
   "source": "index.html",
   "scripts": {
     "start": "parcel",
-    "build": "parcel build"
+    "build": "parcel build",
+    "bundle": "cross-env BABEL_DISABLE_CACHE=1 browserify -t [ babelify --global ] replicate.js > bundle-replicate.js",
+    "setup": "npm run bundle && node setup.js"
   },
   "devDependencies": {
+    "babelify": "^10.0.0",
+    "browserify": "^17.0.0",
+    "cross-env": "^7.0.3",
     "parcel": "^2.2.1"
   },
   "dependencies": {
