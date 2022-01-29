@@ -8,7 +8,7 @@ class DHT extends Node {
   constructor(opts) {
     const websocket = new WebSocket('ws://127.0.0.1:8080');
 
-    super(new ws.Socket(websocket), null);
+    super(new ws.Socket(websocket), opts);
   }
 }
 
