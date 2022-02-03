@@ -1,19 +1,15 @@
-const { Node } = require('@hyperswarm/dht-relay');
-const ws = require('@hyperswarm/dht-relay/ws');
 const Hypercore = require('hypercore');
 const ram = require('random-access-memory');
 const b4a = require('b4a');
+const DHT = require('@hyperswarm/dht-relay');
+const Stream = require('@hyperswarm/dht-relay/ws');
 const WebSocket = require('isomorphic-ws');
-class DHT extends Node {
-  constructor(opts) {
-    const websocket = new WebSocket('ws://127.0.0.1:8080');
 
-    super(new ws.Socket(websocket), opts);
-  }
-}
+new WebSocket('ws://127.0.0.1:8080').onopen = (event) => {
+  main(new DHT(new Stream(true, event.target)));
+};
 
-const main = async () => {
-  const node = new DHT();
+async function main(node) {
   await node.ready();
 
   const core = new Hypercore(
@@ -59,6 +55,4 @@ const main = async () => {
   for (const connection of connections.values()) {
     connection.destroy();
   }
-};
-
-main();
+}
