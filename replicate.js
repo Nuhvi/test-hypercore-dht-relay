@@ -1,58 +1,62 @@
-const Hypercore = require('hypercore');
 const ram = require('random-access-memory');
 const b4a = require('b4a');
-const DHT = require('@hyperswarm/dht-relay');
-const Stream = require('@hyperswarm/dht-relay/ws');
-const WebSocket = require('isomorphic-ws');
+const { DHT } = require('dht-universal');
+const Hyperswarm = require('hyperswarm');
+const Corestore = require('corestore');
 
-new WebSocket('ws://127.0.0.1:8080').onopen = (event) => {
-  main(new DHT(new Stream(true, event.target)));
-};
+async function main() {
+  const dht = await DHT.create();
+  const swarm = new Hyperswarm({ dht });
 
-async function main(node) {
-  await node.ready();
+  const corestore = new Corestore(ram);
+  await corestore.ready();
 
-  const core = new Hypercore(
-    ram,
-    b4a.from(
+  swarm.on('connection', (socket, info) => {
+    corestore.replicate(socket);
+  });
+
+  const core = corestore.get({
+    key: b4a.from(
       '2e066532cc4f0f0ebaa8b09f19646ee0854aab3c80aa50356974996dac7999a1',
       'hex',
     ),
-    { valueEncoding: 'json' },
-  );
+    valueEncoding: 'json',
+  });
   await core.ready();
 
-  const query = node.lookup(core.discoveryKey);
+  const discovery = swarm.join(core.discoveryKey, {
+    client: true,
+    server: false,
+  });
 
-  const connections = new Map();
+  console.log('started discovery');
+  await discovery.flushed();
+  console.log('done discovery');
+  console.log(swarm);
+  await swarm.flush();
+  console.log(swarm);
+  console.log('swarm flush');
 
-  for await (const { peers } of query) {
-    peers.forEach((peer) => {
-      const pubKeyString = b4a.toString(peer.publicKey, 'hex');
-      if (!connections.has(pubKeyString)) {
-        console.log('Connecting to peer:', pubKeyString);
-        const connection = node.connect(peer.publicKey);
-        connections.set(pubKeyString, connection);
-      }
-    });
+  // await core.update();
+  // await core.update();
+
+  // console.log(core.length);
+  // await new Promise((resolve) => {
+  //   core.get(0).then(()=>{
+
+  //   });
+  //   setTimeout(resolve, 3000);
+  // });
+  console.log(core.length);
+
+  if (core.length > 0) {
+    const data = await core.get(core.length - 1);
+    console.log('Got data: ', data);
+  } else {
+    console.log('there is no  data');
   }
 
-  for (const connection of connections.values()) {
-    console.log(
-      'Replicating core from peer:',
-      b4a.toString(connection.remotePublicKey, 'hex'),
-    );
-
-    connection.on('error', (error) => {
-      console.log(error);
-    });
-    connection.pipe(core.replicate(true)).pipe(connection);
-  }
-
-  const data = await core.get(0, { timeout: 1000 });
-  console.log('Got data: ', data);
-
-  for (const connection of connections.values()) {
-    connection.destroy();
-  }
+  swarm.destroy();
 }
+
+main();
