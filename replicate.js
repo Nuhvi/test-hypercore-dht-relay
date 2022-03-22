@@ -4,14 +4,18 @@ const b4a = require('b4a');
 const DHT = require('@hyperswarm/dht-relay');
 const Stream = require('@hyperswarm/dht-relay/ws');
 const WebSocket = require('isomorphic-ws');
+const Hyperswarm = require('hyperswarm');
 
 new WebSocket('ws://127.0.0.1:8080').onopen = (event) => {
-  main(new DHT(new Stream(true, event.target)));
+  const dht = new DHT(new Stream(true, event.target));
+  main(dht);
 };
 
-async function main(node) {
-  await node.ready();
+async function main(dht) {
+  // Setting up Hyperswarm
+  const swarm = new Hyperswarm({ dht });
 
+  // Setting up Hypercore
   const core = new Hypercore(
     ram,
     b4a.from(
@@ -22,37 +26,25 @@ async function main(node) {
   );
   await core.ready();
 
-  const query = node.lookup(core.discoveryKey);
+  console.log('Resolving core: ', b4a.toString(core.key, 'hex'));
+  console.time('resolved in ');
 
-  const connections = new Map();
+  // Replicate on connection
+  swarm.on('connection', async (conn) => {
+    console.log('Got Connection, replicating ..');
+    core.replicate(conn);
+  });
 
-  for await (const { peers } of query) {
-    peers.forEach((peer) => {
-      const pubKeyString = b4a.toString(peer.publicKey, 'hex');
-      if (!connections.has(pubKeyString)) {
-        console.log('Connecting to peer:', pubKeyString);
-        const connection = node.connect(peer.publicKey);
-        connections.set(pubKeyString, connection);
-      }
-    });
-  }
+  // Announcing the Hypercore
+  swarm.join(core.discoveryKey, { server: false, client: true });
 
-  for (const connection of connections.values()) {
-    console.log(
-      'Replicating core from peer:',
-      b4a.toString(connection.remotePublicKey, 'hex'),
-    );
+  await swarm.flush();
+  await core.update();
+  console.log('Core updated', core.length);
 
-    connection.on('error', (error) => {
-      console.log(error);
-    });
-    connection.pipe(core.replicate(true)).pipe(connection);
-  }
+  const data = await core.get(core.length - 1);
+  console.log('Success, Got data: ', data);
+  console.timeEnd('resolved in ');
 
-  const data = await core.get(0, { timeout: 1000 });
-  console.log('Got data: ', data);
-
-  for (const connection of connections.values()) {
-    connection.destroy();
-  }
+  process.exit?.();
 }

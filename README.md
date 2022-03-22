@@ -4,7 +4,7 @@
 
 ```
 npm install
-npm run setup.js
+npm run setup
 ```
 
 ## Test
@@ -20,7 +20,7 @@ should see:
 ```bash
 Connecting to peer: <remote>
 Replicating core from peer: <remote>
-Got data:  { foo: 'bar' }
+Success, Got data:  { foo: 'Zar' }
 ```
 
 Browser:

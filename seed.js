@@ -1,32 +1,43 @@
-const DHT = require('@hyperswarm/dht');
 const Hypercore = require('hypercore');
 const ram = require('random-access-memory');
 const { createHash } = require('crypto');
+const DHT = require('@hyperswarm/dht');
+const Hyperswarm = require('hyperswarm');
 
-const main = async () => {
-  const node = new DHT({ ephemeral: true });
-  await node.ready();
+const main = async ({ bootstrap }) => {
+  // Setting up Hyperswarm
+  const swarm = new Hyperswarm({
+    bootstrap,
+  });
 
+  // Setting up Hypercore
   const keyPair = DHT.keyPair(createHash('sha256').update('foobar').digest());
 
   const core = new Hypercore(ram, {
-    valueEncoding: 'json',
     keyPair,
+    valueEncoding: 'json',
   });
   await core.ready();
 
-  await core.append({ foo: 'bar' });
-
-  const server = node.createServer();
-  server.on('connection', (socket) => {
-    socket.on('error', (error) => console.log(error.message));
-    socket.pipe(core.replicate(false)).pipe(socket);
+  // Replicate on connection
+  swarm.on('connection', (conn) => {
+    core.replicate(conn);
   });
 
-  await node.announce(core.discoveryKey, node.defaultKeyPair).finished();
-  await server.listen();
+  // Announcing the Hypercore
+  await swarm
+    .join(core.discoveryKey, { server: true, client: false })
+    .flushed();
 
-  console.log('seeding core: ', core.key.toString('hex'));
+  await core.append({ foo: 'Bar' });
+  await core.append({ foo: 'Zar' });
+
+  console.log(
+    'seeding core: ',
+    core.key.toString('hex'),
+    'length',
+    core.length,
+  );
 };
 
 module.exports = main;
